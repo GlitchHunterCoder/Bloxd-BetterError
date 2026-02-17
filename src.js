@@ -33,7 +33,12 @@ BetterError = class {
   }
   catch(){
     if(!this.store){return;}
-    return this.getErr(this.store).map(e=>+e.replace(/\D+/g, '')-3).filter(e=>e>=0)
+    return this.getErr(this.store)
+      .map(line => {
+        let match = line.match(/:(\d+)\)?$/);
+        return match?Number(match[1])-3:void 0;
+      })
+      .filter(n => n !== null && n >= 0);
   }
   find(num=0,ctx=1){
     if (!this.store){return;}
@@ -47,11 +52,11 @@ BetterError = class {
     }
     return "\n"+list.join("\n")+"\n"
   }
-  log(size = Infinity){
+  log(ctx,size){
     if(!this.store){api.broadcastMessage("0 Errors Found",{color:"lime"});return;}
     let e = this.store
     let str = e.name+": "+e.message+"\n"+e.stack
-    this.catch().splice(0, size).forEach((e,i)=>str+="Error on Line "+e+" (<input>:"+(e+3)+"): "+this.find(i))
+    this.catch().splice(0, size).forEach((e,i)=>str+="Error on Line "+e+" (<input>:"+(e+3)+"): "+this.find(i,ctx))
     str+="End of Log"
     api.broadcastMessage(str,{color:"red"})
     return str
@@ -63,7 +68,7 @@ BE = new class {
     this.get = new BetterError()
   }
   try(src){this.get.try(src)}
-  log(){this.get.log()}
+  log(ctx=1,size = Infinity){this.get.log(ctx,size)}
   get store(){return BE.get.store}
   get src(){return BE.get.src}
 }
