@@ -1,11 +1,11 @@
 Object.defineProperty(globalThis.InternalError.prototype, "name", {
   configurable: true,
   get: function() {
-    if(!BetterError.isRun){return "InternalError"}
+    if(!BE.get.isRun){return "InternalError"}
     let a = this
     this.name = "InternalError"
-    BetterError.store = a
-    BetterError.isRun = false
+    BE.get.store = a
+    BE.get.isRun = false
     return "InternalError"
   }
 });
@@ -33,7 +33,7 @@ BetterError = class {
   }
   catch(){
     if(!this.store){return;}
-    return this.getErr(this.store).map(e=>+e.replace(/\D+/g, '')-3+(this.store.name=="InternalError")).filter(e=>e>=0)
+    return this.getErr(this.store).map(e=>+e.replace(/\D+/g, '')-3).filter(e=>e>=0)
   }
   find(num=0,ctx=1){
     if (!this.store){return;}
@@ -47,11 +47,11 @@ BetterError = class {
     }
     return "\n"+list.join("\n")+"\n"
   }
-  log(){
-    if(!this.store){return;}
+  log(size = Infinity){
+    if(!this.store){api.broadcastMessage("0 Errors Found",{color:"lime"});return;}
     let e = this.store
     let str = e.name+": "+e.message+"\n"+e.stack
-    this.catch().forEach((e,i)=>str+="Error on Line "+e+" (<input>:"+(e+3)+"): "+this.find(i))
+    this.catch().splice(0, size).forEach((e,i)=>str+="Error on Line "+e+" (<input>:"+(e+3)+"): "+this.find(i))
     str+="End of Log"
     api.broadcastMessage(str,{color:"red"})
     return str
@@ -60,8 +60,10 @@ BetterError = class {
 
 BE = new class {
   constructor(){
-    this.E = new BetterError()
+    this.get = new BetterError()
   }
-  try(src){this.E.try(src)}
-  log(){this.E.log()}
+  try(src){this.get.try(src)}
+  log(){this.get.log()}
+  get store(){return BE.get.store}
+  get src(){return BE.get.src}
 }
