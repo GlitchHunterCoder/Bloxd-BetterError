@@ -48,19 +48,19 @@ TypeError: cannot read property 'y' of undefined
   at <eval>
 Error on Line 10 (<input>:13): 
   |  | function level3() {
-  |  |  let x = undefined
-  | >|  x.y.z
+  |  |   let x = undefined
+  | >|   x.y.z
   |  | }
   |  | 
 Error on Line 5 (<input>:8): 
   |  | 
   |  | function level2() {
-  | >|  level3()
+  | >|   level3()
   |  | }
   |  | 
 Error on Line 1 (<input>:4): 
   |  | function level1() {
-  | >|  level2()
+  | >|   level2()
   |  | }
   |  | 
 Error on Line 13 (<input>:16): 
