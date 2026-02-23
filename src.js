@@ -34,7 +34,7 @@ BetterError = class {
   }
   catch(){
     if(!this.store){return;}
-    this.offset = 3+(this.store.name=="InternalError")
+    this.offset = 3
     return this.getErr(this.store)
       .map(line => {
         let match = line.match(/:(\d+)\)?$/);
