@@ -15,6 +15,7 @@ BetterError = class {
     this.store = void 0
     this.isRun = false
     this.src = void 0
+    this.offset = void 0
   }
   getErr(err) {
     return err.stack.split("\n").map(line =>line.trim().replace(/^at\s+/, "").replace(/\s+/g, " "))
@@ -33,10 +34,11 @@ BetterError = class {
   }
   catch(){
     if(!this.store){return;}
+    this.offset = 3+(this.store.name=="InternalError")
     return this.getErr(this.store)
       .map(line => {
         let match = line.match(/:(\d+)\)?$/);
-        return match?Number(match[1])-3:void 0;
+        return match?Number(match[1])-this.offset:void 0;
       })
       .filter(n => n !== null && n >= 0);
   }
@@ -56,7 +58,7 @@ BetterError = class {
     if(!this.store){api.broadcastMessage("0 Errors Found",{color:"lime"});return;}
     let e = this.store
     let str = e.name+": "+e.message+"\n"+e.stack
-    this.catch().splice(0, size).forEach((e,i)=>str+="Error on Line "+e+" (<input>:"+(e+3)+"): "+this.find(i,ctx))
+    this.catch().splice(0, size).forEach((e,i)=>str+="Error on Line "+e+" (<input>:"+(e+this.offset)+"): "+this.find(i,ctx))
     str+="End of Log"
     api.broadcastMessage(str,{color:"red"})
     return str
@@ -72,3 +74,4 @@ BE = new class {
   get store(){return BE.get.store}
   get src(){return BE.get.src}
 }
+
