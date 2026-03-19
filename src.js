@@ -16,9 +16,10 @@ BetterError = class {
     this.isRun = false
     this.src = void 0
     this.offset = void 0
+    this.depth = 0
   }
   getErr(err) {
-    return err.stack.split("\n").map(line =>line.trim().replace(/^at\s+/, "").replace(/\s+/g, " "))
+    return err.stack.split("\n").map(line => line.trim().replace(/^at\s+/, "").replace(/\s+/g, " "))
   }
   try(src){
     this.isRun = true
@@ -32,46 +33,115 @@ BetterError = class {
     }
     this.isRun = false
   }
-  catch(){
+  throw(){
     if(!this.store){return;}
-    this.offset = 3
+    if(!this.store._beChain) this.store._beChain = []
+    this.store._beChain.push({
+      src: this.src.replace(/^\n+/,""),
+      depth: this.depth,
+      leading: this.src.match(/^\n*/)[0].length
+    })
+    throw this.store
+  }
+  catch(){
+    if(!this.store){return [];}
+    let leadingNewlines = this.src.match(/^\n*/)[0].length
+    let src = this.src.replace(/^\n+/,"")
+    let depth = this.depth
+    let lineCount = src.split("\n").length
+    let isSyntaxError = this.store instanceof SyntaxError
+    this.offset = isSyntaxError ? 4 : 3 + Math.min(depth, 1)
+    let seen = new Set()
     return this.getErr(this.store)
       .map(line => {
         let match = line.match(/:(\d+)\)?$/);
-        return match?Number(match[1])-this.offset:void 0;
+        return match ? Number(match[1]) - this.offset - leadingNewlines : void 0;
       })
-      .filter(n => n !== null && n >= 0);
+      .filter(n => {
+        if(n === null || n === undefined || n < 0 || n >= lineCount) return false
+        if(seen.has(n)) return false
+        seen.add(n)
+        return true
+      })
+      .slice(0, 1)
   }
-  find(num=0,ctx=1){
-    if (!this.store){return;}
+  find(num=0, ctx=1){
+    if(!this.store){return "";}
+    let src = this.src.replace(/^\n+/,"")
     let line = this.catch()[num]
-    let start = Math.max(line-ctx,0)
-    let end = Math.min(line+ctx+1,this.src.split("\n").length)
-    let list = this.src.split("\n").slice(start,end).map(e=>"    |   | "+e)
-    let errorIndex = line-start
-    if (list[errorIndex]) {
-      list[errorIndex]  = "    |>| "+list[errorIndex].slice(10)
+    if(line === void 0){return "";}
+    let start = Math.max(line - ctx, 0)
+    let end = Math.min(line + ctx + 1, src.split("\n").length)
+    let list = src.split("\n").slice(start, end).map(e => "    |   | " + e)
+    let errorIndex = line - start
+    if(list[errorIndex]){
+      list[errorIndex] = "    |>| " + list[errorIndex].slice(10)
     }
-    return "\n"+list.join("\n")+"\n"
+    return "\n" + list.join("\n") + "\n"
   }
-  log(ctx,size){
-    if(!this.store){api.broadcastMessage("0 Errors Found",{color:"lime"});return;}
+  log(ctx=1, size=Infinity){
+    if(!this.store){api.broadcastMessage("0 Errors Found", {color:"lime"}); return;}
     let e = this.store
-    let str = e.name+": "+e.message+"\n"+e.stack
-    this.catch().splice(0, size).forEach((e,i)=>str+="Error on Line "+e+" (<input>:"+(e+this.offset)+"): "+this.find(i,ctx))
-    str+="End of Log"
-    api.broadcastMessage(str,{color:"red"})
+    let str = e.name + ": " + e.message + "\n" + e.stack
+    let frames = e._beChain ? [...e._beChain] : []
+    frames.push({
+      src: this.src.replace(/^\n+/,""),
+      depth: this.depth,
+      leading: this.src.match(/^\n*/)[0].length
+    })
+    frames.slice(0, size).forEach((frame, fi) => {
+      let lineCount = frame.src.split("\n").length
+      let isSyntaxError = e instanceof SyntaxError
+      let offset = isSyntaxError ? 4 : 3 + Math.min(frame.depth, 1)
+      let seen = new Set()
+      let lines = this.getErr(e)
+        .map(line => {
+          let match = line.match(/:(\d+)\)?$/);
+          return match ? Number(match[1]) - offset - frame.leading : void 0;
+        })
+        .filter(n => {
+          if(n === null || n === undefined || n < 0 || n >= lineCount) return false
+          if(seen.has(n)) return false
+          seen.add(n)
+          return true
+        })
+        .slice(0, 1)
+      let label = fi === 0 ? "Error" : "Rethrown"
+      lines.forEach(line => {
+        let start = Math.max(line - ctx, 0)
+        let end = Math.min(line + ctx + 1, frame.src.split("\n").length)
+        let list = frame.src.split("\n").slice(start, end).map(l => "    |   | " + l)
+        let errorIndex = line - start
+        if(list[errorIndex]) list[errorIndex] = "    |>| " + list[errorIndex].slice(10)
+        str += label + " on Line " + line + " (<input>:" + (line + offset) + "): \n" + list.join("\n") + "\n"
+      })
+    })
+    str += "End of Log"
+    api.broadcastMessage(str, {color:"red"})
     return str
   }
 }
 
 BE = new class {
   constructor(){
-    this.get = new BetterError()
+    this.stack = []
+    this.last = new BetterError()
   }
-  try(src){this.get.try(src)}
-  log(ctx=1,size = Infinity){this.get.log(ctx,size)}
-  get store(){return BE.get.store}
-  get src(){return BE.get.src}
+  get get(){
+    return this.stack.length
+      ? this.stack[this.stack.length - 1]
+      : this.last
+  }
+  try(src){
+    let instance = new BetterError()
+    instance.depth = this.stack.length
+    this.stack.push(instance)
+    instance.try(src)
+    this.stack.pop()
+    this.last = instance
+  }
+  log(ctx=1, size=Infinity){ this.last.log(ctx, size) }
+  throw(){ this.last.throw() }
+  get store(){ return this.last.store }
+  get src(){ return this.last.src }
 }
-
