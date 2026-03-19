@@ -1,7 +1,7 @@
 Object.defineProperty(globalThis.InternalError.prototype, "name", {
   configurable: true,
   get: function() {
-    if(!BE.get.isRun){return "CaughtInternalError"}
+    if(!BE.get.isRun){return "InternalError"}
     let a = this
     this.name = "InternalError"
     let instance = BE.get
