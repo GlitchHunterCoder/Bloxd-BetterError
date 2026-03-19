@@ -1,12 +1,15 @@
 Object.defineProperty(globalThis.InternalError.prototype, "name", {
   configurable: true,
   get: function() {
-    if(!BE.get.isRun){return "InternalError"}
+    if(!BE.get.isRun){return "CaughtInternalError"}
     let a = this
     this.name = "InternalError"
-    BE.get.store = a
-    BE.get.isRun = false
-    return "InternalError"
+    let instance = BE.get
+    instance.store = a
+    instance.isRun = false
+    BE.stack.pop()
+    BE.last = instance
+    return "CaughtInternalError"
   }
 });
 
@@ -16,7 +19,6 @@ BetterError = class {
     this.isRun = false
     this.src = void 0
     this.offset = void 0
-    this.depth = 0
   }
   getErr(err) {
     return err.stack.split("\n").map(line => line.trim().replace(/^at\s+/, "").replace(/\s+/g, " "))
@@ -36,26 +38,18 @@ BetterError = class {
   throw(){
     if(!this.store){return;}
     if(!this.store._beChain) this.store._beChain = []
-    this.store._beChain.push({
-      src: this.src.replace(/^\n+/,""),
-      depth: this.depth,
-      leading: this.src.match(/^\n*/)[0].length
-    })
+    this.store._beChain.push({src: this.src})
     throw this.store
   }
   catch(){
     if(!this.store){return [];}
-    let leadingNewlines = this.src.match(/^\n*/)[0].length
-    let src = this.src.replace(/^\n+/,"")
-    let depth = this.depth
-    let lineCount = src.split("\n").length
-    let isSyntaxError = this.store instanceof SyntaxError
-    this.offset = isSyntaxError ? 4 : 3 + Math.min(depth, 1)
+    let lineCount = this.src.split("\n").length
+    this.offset = 3
     let seen = new Set()
     return this.getErr(this.store)
       .map(line => {
         let match = line.match(/:(\d+)\)?$/);
-        return match ? Number(match[1]) - this.offset - leadingNewlines : void 0;
+        return match ? Number(match[1]) - this.offset : void 0;
       })
       .filter(n => {
         if(n === null || n === undefined || n < 0 || n >= lineCount) return false
@@ -67,12 +61,11 @@ BetterError = class {
   }
   find(num=0, ctx=1){
     if(!this.store){return "";}
-    let src = this.src.replace(/^\n+/,"")
     let line = this.catch()[num]
     if(line === void 0){return "";}
     let start = Math.max(line - ctx, 0)
-    let end = Math.min(line + ctx + 1, src.split("\n").length)
-    let list = src.split("\n").slice(start, end).map(e => "    |   | " + e)
+    let end = Math.min(line + ctx + 1, this.src.split("\n").length)
+    let list = this.src.split("\n").slice(start, end).map(e => "    |   | " + e)
     let errorIndex = line - start
     if(list[errorIndex]){
       list[errorIndex] = "    |>| " + list[errorIndex].slice(10)
@@ -80,27 +73,22 @@ BetterError = class {
     return "\n" + list.join("\n") + "\n"
   }
   log(ctx=1, size=Infinity){
-    let logMessage;
-    if(myId!=void 0){logMessage=(...args)=>api.sendMessage(myId,...args)}
-    else{logMessage=(...args)=>api.broadcastMessage(...args)}
+    let logMessage
+    if(myId != void 0){logMessage = (...args) => api.sendMessage(myId, ...args)}
+    else{logMessage = (...args) => api.broadcastMessage(...args)}
     if(!this.store){logMessage("0 Errors Found", {color:"lime"}); return;}
     let e = this.store
     let str = e.name + ": " + e.message + "\n" + e.stack
     let frames = e._beChain ? [...e._beChain] : []
-    frames.push({
-      src: this.src.replace(/^\n+/,""),
-      depth: this.depth,
-      leading: this.src.match(/^\n*/)[0].length
-    })
+    frames.push({src: this.src})
     frames.slice(0, size).forEach((frame, fi) => {
       let lineCount = frame.src.split("\n").length
-      let isSyntaxError = e instanceof SyntaxError
-      let offset = isSyntaxError ? 4 : 3 + Math.min(frame.depth, 1)
+      let offset = 3
       let seen = new Set()
       let lines = this.getErr(e)
         .map(line => {
           let match = line.match(/:(\d+)\)?$/);
-          return match ? Number(match[1]) - offset - frame.leading : void 0;
+          return match ? Number(match[1]) - offset : void 0;
         })
         .filter(n => {
           if(n === null || n === undefined || n < 0 || n >= lineCount) return false
@@ -125,7 +113,7 @@ BetterError = class {
   }
 }
 
-BE = new class {
+globalThis.BE = new class {
   constructor(){
     this.stack = []
     this.last = new BetterError()
@@ -137,7 +125,6 @@ BE = new class {
   }
   try(src){
     let instance = new BetterError()
-    instance.depth = this.stack.length
     this.stack.push(instance)
     instance.try(src)
     this.stack.pop()
