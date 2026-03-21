@@ -1,7 +1,11 @@
 Object.defineProperty(globalThis.InternalError.prototype, "name", {
   configurable: true,
   get: function() {
-    if(!BE.get.isRun){return "InternalError"}
+    if(!BE.get.isRun){
+      this.stack=""
+      this.message=""
+      return ""
+    }
     let a = this
     this.name = "InternalError"
     let instance = BE.get
@@ -9,6 +13,7 @@ Object.defineProperty(globalThis.InternalError.prototype, "name", {
     instance.isRun = false
     BE.stack.pop()
     BE.last = instance
+    BE.log(2)
     return "CaughtInternalError"
   }
 });
