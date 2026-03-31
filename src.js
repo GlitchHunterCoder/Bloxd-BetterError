@@ -128,10 +128,10 @@ globalThis.BE = new class {
       ? this.stack[this.stack.length - 1]
       : this.last
   }
-  try(src){
+  try(src,arg){
     let instance = new BetterError()
     this.stack.push(instance)
-    instance.try(src)
+    instance.try(src,arg)
     this.stack.pop()
     this.last = instance
   }
