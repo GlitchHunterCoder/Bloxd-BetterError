@@ -28,12 +28,12 @@ BetterError = class {
   getErr(err) {
     return err.stack.split("\n").map(line => line.trim().replace(/^at\s+/, "").replace(/\s+/g, " "))
   }
-  try(src){
+  try(src,kvArgs={}){
     this.isRun = true
     this.src = "//BE_START\n"+src+"\n//BE_END"
     this.store = void 0
     try{
-      Function(this.src)();
+      Function(...Object.keys(kvArgs),this.src)(...Object.values(kvArgs));
     }catch(e){
       if(!this.isRun){return;}
       this.store = e
