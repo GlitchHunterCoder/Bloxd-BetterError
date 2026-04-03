@@ -1,3 +1,5 @@
+
+
 Object.defineProperty(globalThis.InternalError.prototype, "name", {
   configurable: true,
   get: function() {
@@ -18,7 +20,7 @@ Object.defineProperty(globalThis.InternalError.prototype, "name", {
   }
 });
 
-BetterError = class {
+let BetterError = class {
   constructor(){
     this.store = void 0
     this.isRun = false
@@ -62,7 +64,6 @@ BetterError = class {
         seen.add(n)
         return true
       })
-      .slice(0, 1)
   }
   find(num=0, ctx=1){
     if(!this.store){return "";}
@@ -81,7 +82,7 @@ BetterError = class {
     let logMessage
     if(myId != void 0){logMessage = (...args) => api.sendMessage(myId, ...args)}
     else{logMessage = (...args) => api.broadcastMessage(...args)}
-    if(!this.store){logMessage("0 Errors Found", {color:"lime"}); return;}
+    if(!this.store){/*logMessage("0 Errors Found", {color:"lime"});*/ return;}
     let e = this.store
     let str = e.name + ": " + e.message + "\n" + e.stack
     let frames = e._beChain ? [...e._beChain] : []
@@ -101,7 +102,6 @@ BetterError = class {
           seen.add(n)
           return true
         })
-        .slice(0, 1)
       let label = fi === 0 ? "Error" : "Rethrown"
       lines.forEach(line => {
         let start = Math.max(line - ctx, 0)
