@@ -82,7 +82,7 @@ let BetterError = class {
     let logMessage
     if(myId != void 0){logMessage = (...args) => api.sendMessage(myId, ...args)}
     else{logMessage = (...args) => api.broadcastMessage(...args)}
-    if(!this.store){/*logMessage("0 Errors Found", {color:"lime"});*/ return;}
+    if(!this.store){logMessage("0 Errors Found", {color:"lime"}); return;}
     let e = this.store
     let str = e.name + ": " + e.message + "\n" + e.stack
     let frames = e._beChain ? [...e._beChain] : []
