@@ -70,3 +70,18 @@ Error on Line 13 (<input>:16):
 End of Log
 ```
 which clearly shows exactly where the error is, and how it propagates through the code
+# Future Idea
+```js
+Reflect.ownKeys(globalThis).filter(item => typeof item === "string" && item.includes("Error"))
+  .forEach(E => {
+    Object.defineProperty(globalThis[E].prototype, "name", {
+      configurable: true,
+      get: function() {
+        this.message += "\n"+this.stack;
+      }
+    });
+  });
+```
+editing errors in order to get more data from it
+
+
